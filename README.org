@@ -1,0 +1,4 @@
+
+* Emacs native dialog box
+
+[[./nano-dialog.png]]
