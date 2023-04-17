@@ -198,7 +198,7 @@
 (defface nano-dialog-button-highlight-face
   `((t :foreground ,(face-background 'default)
        :background ,(face-foreground 'default)
-       :weight 'semibold))
+       :weight semibold))
   "Highlight button face")
 
 (defface nano-dialog-button-pressed-face
