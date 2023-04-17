@@ -347,7 +347,7 @@
 
 (defun nano-dialog--make-button (button)
   "Make a svg button from button that is a cons (label . state)."
-  
+
   (let* ((label (car button))
          (state (cdr button))
          (face (cond ((eq state 'highlight) 'nano-dialog-button-highlight-face)
@@ -444,13 +444,13 @@
                            :background ,(face-background 'default)
                            :family ,(face-attribute face :family t 'default)
                            :weight ,(face-attribute face :weight t 'default)
-                           :height ,(face-attribute face :height t 'default)))
+                           :height ,(face-attribute 'default :height)))
     (face-remap-set-base 'mode-line-inactive
                          `(:foreground ,(face-foreground face)
                            :background ,(face-background 'default)
                            :family ,(face-attribute face :family t 'default)
                            :weight ,(face-attribute face :weight t 'default)
-                           :height ,(face-attribute face :height t 'default)))))
+                           :height ,(face-attribute 'default :height)))))
 
 (defun nano-dialog-delete (&optional force)
   "Delete the dialog frame if not focused or FORCE is t."
@@ -484,23 +484,24 @@
   "Build and show a new dialog showing BUFFER.
 
   Args can be:
+
   :title xxx     ;; Dialog title (string)
   :width xxx     ;; Dialog width (int)
   :height xxx    ;; Dialog height (int)
   :x xxx         ;; Dialog x position (int or float)
   :y xxx         ;; Dialog y position (int or float)
-  :transient x   ;; Dialog transient property (bool, transient means that
-                 ;; when dialog become unfocudes, it is deleted
-  :child-frame x ;; Whether Dialog is a child frame (bool)
-  :buttons xxx   ;; Labels for dialog buttons (list)"
+  :transient x   ;; Dialog transient property (bool).
+  :child-frame x ;; Whether dialog is a child frame (bool)
+  :buttons xxx   ;; Labels for dialog buttons (list of string)"
   
-  (let ((buffer (or buffer "*nano-dialog*")))
-    (apply #'nano-dialog--make-frame buffer args)
+  (let* ((buffer (or buffer "*nano-dialog*"))
+         (frame (apply #'nano-dialog--make-frame buffer args)))
     (apply #'nano-dialog--make-header buffer args)
     (apply #'nano-dialog--make-footer buffer args)
     (tooltip-mode t)
     (setq tooltip-delay 0)
-    (advice-add 'tooltip-hide :before #'nano-dialog--reset-button-state)))
+    (advice-add 'tooltip-hide :before #'nano-dialog--reset-button-state)
+    frame))
 
 (defun nano-dialog-info (&optional buffer &rest args)
   "Build and show a new info dialog showing BUFFER.
