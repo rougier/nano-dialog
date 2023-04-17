@@ -240,6 +240,7 @@
                           nano-dialog-child-frame))
          (margin (or (plist-get args :margin)
                      nano-dialog-margin))
+         (title (plist-get args :title))
          (header-padding nano-dialog-header-padding)
          (footer-padding nano-dialog-footer-padding)
          (width (or (plist-get args :width)
@@ -252,9 +253,15 @@
          ;; padding to the height such as to guarantee buffer height.
          ;; If header face is bigger, this code would need to be
          ;; adapted.
+         ;; When no title, header is an empty line without padding
+         ;; When no buttons, footer is an empty line without padding
          (height (floor (+ height 1
-                           1 (car header-padding) (cdr header-padding)
-                           1 (car footer-padding) (cdr footer-padding))))
+                           1
+                           (if title (car header-padding) 0)
+                           (if title (cdr header-padding) 0)
+                           1
+                           (if buttons (car footer-padding) 0)
+                           (if buttons (cdr footer-padding) 0))))
          (x (or (plist-get args :x)
                 nano-dialog-x-position))
          (y (or (plist-get args :y)
@@ -322,13 +329,17 @@
                                         (interactive)
                                         (nano-dialog-delete t)))
                                     map)))))
-        (setq-local header-line-format nil))
+        (setq-local header-line-format ""))
 
-      (face-remap-set-base 'header-line
-                           `(:inherit ,(face-attribute face ':inherit)
-                             :foreground ,(face-foreground face)
-                             :background ,(face-background face)
-                             )))))
+      (if title
+          (face-remap-set-base 'header-line
+                               `(:inherit ,(face-attribute face ':inherit)
+                                 :foreground ,(face-foreground face)
+                                 :background ,(face-background face)))
+        (face-remap-set-base 'header-line
+                             `(:inherit ,(face-attribute face ':inherit)
+                               :foreground ,(face-foreground face)
+                               :background ,(face-background 'default)))))))
 
 (defun nano-dialog--make-button (button)
   "Make a svg button from button that is a cons (label . state)."
@@ -399,11 +410,12 @@
          (face (or (plist-get args :face)
                    'nano-dialog-default-face))
          (labels (plist-get args :buttons))
-         ;; Label need an extra space to compensate for SVG tag padding
+         ;; Labels need an extra space to compensate for SVG tag padding
          (labels (mapconcat (lambda (label) (concat label " "))
-                            labels " ")))
+                            labels " "))
+         (no-buttons (> (length labels) 0)))
 
-    (if (> (length labels) 0)
+    (if no-buttons
         (setq-local mode-line-format
           `(:eval
             (let ((labels ,labels)
@@ -411,11 +423,10 @@
               (concat
                (propertize " " 'display '(raise ,(+ (car footer-padding))))
                (propertize " " 'display '(raise ,(- (cdr footer-padding))))
-               ;; Why the 2 is necessary here is not clear
                (propertize " " 'display '(space :align-to (- right ,(length labels))))
                (mapconcat #'nano-dialog--make-button buttons " ")))))
-      (setq-local mode-line-format nil))
-    
+      (setq-local mode-line-format ""))
+
     (face-remap-set-base 'mode-line
                          `(:foreground ,(face-foreground face)
                            :background ,(face-background 'default)
