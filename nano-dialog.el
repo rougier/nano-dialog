@@ -25,14 +25,14 @@
 
 ;;; Commentary:
 ;;
-;; This package provide native dialog boxes.
+;; This package provide native dialog boxes with a header, a content
+;; and a set of configurable buttons.
 ;;
 ;;; Usage:
 ;;
 ;; (nano-dialog "*nano-dialog*"
-;;              :title "􁌴 NANO Dialog"
+;;              :title "[I] NANO Dialog"
 ;;              :buttons '("OK" "CANCEL"))
-;;
 ;;
 ;; NEWS:
 ;;
@@ -248,8 +248,10 @@
                      nano-dialog-height))
          (buttons (plist-get args :buttons))
 
-         ;; Given height is for buffer and so we add padding
-         ;; If header face is bigger, this should need to be adapted
+         ;; The given height is for the buffer. Consequently, we add
+         ;; padding to the height such as to guarantee buffer height.
+         ;; If header face is bigger, this code would need to be
+         ;; adapted.
          (height (floor (+ height 1
                            1 (car header-padding) (cdr header-padding)
                            1 (car footer-padding) (cdr footer-padding))))
@@ -274,7 +276,7 @@
       (modify-frame-parameters frame `((top . ,y) (left . ,x))))
 
     ;; We store the buttons state inside the frame such as to be able
-    ;; to update their state latter
+    ;; to update their state later
     (if buttons
         (modify-frame-parameters frame
            `((buttons . ,(mapcar (lambda (label)
@@ -323,11 +325,10 @@
         (setq-local header-line-format nil))
 
       (face-remap-set-base 'header-line
-                           `(                             :inherit ,(face-attribute face ':inherit)
+                           `(:inherit ,(face-attribute face ':inherit)
                              :foreground ,(face-foreground face)
                              :background ,(face-background face)
                              )))))
-
 
 (defun nano-dialog--make-button (button)
   "Make a svg button from button that is a cons (label . state)."
@@ -359,7 +360,10 @@
                               (nano-dialog--update-button-state ,label 'highlight)))))
 
 (defun nano-dialog--button-pressed (label)
-  "Close the frame and run hooks"
+  "Close the frame"
+
+  ;; This function can be advised to do something useful with the
+  ;; answer.
   (nano-dialog-delete t))
   
 (defun nano-dialog--reset-button-state (&rest args)
@@ -429,7 +433,7 @@
   ;; Focus change event are not really consistent and it may happen
   ;; that several events are sent one after the other. On OSX, it
   ;; seems that spurious events can be detected by checking if any
-  ;; frame has focus. If none has focus we label the event as not
+  ;; frame has focus. If none has focus, we label the event as not
   ;; valid. See also: https://emacs.stackexchange.com/questions/62783
 
   ;; Check if at least one frame has focus
@@ -452,6 +456,19 @@
       (delete-frame frame))))
 
 (defun nano-dialog (&optional buffer &rest args)
+  "Build and show a new dialog showing BUFFER.
+
+  Args can be:
+  :title xxx     ;; Dialog title (string)
+  :width xxx     ;; Dialog width (int)
+  :height xxx    ;; Dialog height (int)
+  :x xxx         ;; Dialog x position (int or float)
+  :y xxx         ;; Dialog y position (int or float)
+  :transient x   ;; Dialog transient property (bool, transient means that
+                 ;; when dialog become unfocudes, it is deleted
+  :child-frame x ;; Whether Dialog is a child frame (bool)
+  :buttons xxx   ;; Labels for dialog buttons (list)"
+  
   (let ((buffer (or buffer "*nano-dialog*")))
     (apply #'nano-dialog--make-frame buffer args)
     (apply #'nano-dialog--make-header buffer args)
@@ -461,31 +478,52 @@
     (setq tooltip-delay 0)
     (advice-add 'tooltip-hide :before #'nano-dialog--reset-button-state)))
 
-(defun nano-dialog-info (&optional buffer  &rest args)
+(defun nano-dialog-info (&optional buffer &rest args)
+  "Build and show a new info dialog showing BUFFER.
+ See nano-dialog for options"
+  
   (apply #'nano-dialog buffer
          :face 'nano-dialog-info-face args))
 
 (defun nano-dialog-alert (&optional buffer  &rest args)
+  "Build and show a new alert dialog showing BUFFER.
+ See nano-dialog for options"
+
   (apply #'nano-dialog buffer
          :face 'nano-dialog-alert-face args))
 
 (defun nano-dialog-question (&optional buffer  &rest args)
+  "Build and show a new question dialog showing BUFFER.
+ See nano-dialog for options"
+
   (apply #'nano-dialog buffer
          :face 'nano-dialog-question-face args))
 
 (defun nano-dialog-warning (&optional buffer  &rest args)
+  "Build and show a new warning dialog showing BUFFER.
+ See nano-dialog for options"
+
   (apply #'nano-dialog buffer
          :face 'nano-dialog-warning-face args))
 
 (defun nano-dialog-error (&optional buffer  &rest args)
+  "Build and show a new error dialog showing BUFFER.
+ See nano-dialog for options"
+
   (apply #'nano-dialog buffer
          :face 'nano-dialog-error-face args))
 
 (defun nano-dialog-success (&optional buffer  &rest args)
+  "Build and show a new success dialog showing BUFFER.
+ See nano-dialog for options"
+
   (apply #'nano-dialog buffer
          :face 'nano-dialog-success-face args))
  
 (defun nano-dialog-failure (&optional buffer  &rest args)
+  "Build and show a new failure dialog showing BUFFER.
+ See nano-dialog for options"
+
   (apply #'nano-dialog buffer
          :face 'nano-dialog-failure-face args))
 
