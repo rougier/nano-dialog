@@ -408,9 +408,17 @@
 
 (defun nano-dialog--make-footer (buffer &rest args)
   "Build the footer for BUFFER, applying ARGS style elements."
+
+  ;; We store the buttons state inside the frame such as to be able
+  ;; to update their state later
+  (if-let ((buttons (plist-get args :buttons)))
+      (modify-frame-parameters (selected-frame)
+             `((buttons . ,(mapcar (lambda (label)
+                                     (cons label 'active))
+                                   buttons))))
+    (modify-frame-parameters (selected-frame) '((buttons . nil))))
   
-  (let* ((footer-padding (or (plist-get args :footer-padding)
-                             nano-dialog-footer-padding))
+  (let* ((footer-padding nano-dialog-footer-padding)
          (face (or (plist-get args :face)
                    'nano-dialog-default-face))
          (labels (plist-get args :buttons))
