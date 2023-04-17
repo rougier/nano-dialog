@@ -270,6 +270,7 @@
          (frame (make-frame `((name . "nano-dialog")
                               (parent-frame . ,(if child-frame parent nil))
                               (alpha . 100)
+                              (margin . ,margin)
                               (transient . ,transient)
                               (width . ,width)
                               (height . ,height)
@@ -282,17 +283,10 @@
     (when child-frame
       (modify-frame-parameters frame `((top . ,y) (left . ,x))))
 
-    ;; We store the buttons state inside the frame such as to be able
-    ;; to update their state later
-    (if buttons
-        (modify-frame-parameters frame
-           `((buttons . ,(mapcar (lambda (label)
-                                         (cons label 'active))
-                                       buttons))))
-        (modify-frame-parameters frame '((buttons . nil))))
-  
     (select-frame-set-input-focus frame)
     (switch-to-buffer buffer)
+    (add-to-list 'window-buffer-change-functions
+                 #'nano-dialog--apply-margin)
     (set-window-margins (get-buffer-window) (car margin) (cdr margin))
     (make-frame-visible frame)
     (set-window-dedicated-p (get-buffer-window) t)
@@ -300,6 +294,16 @@
     (read-only-mode t)
     (add-function :after after-focus-change-function #'nano-dialog-delete)
     frame))
+
+(defun nano-dialog--apply-margin (&rest args)
+  "Apply margin to the dialog window"
+  
+  (when-let* ((frame (selected-frame))
+              (name (frame-parameter frame 'name))
+              (margin (frame-parameter frame 'margin)))
+    (when (string-equal name "nano-dialog")
+      (set-window-margins (get-buffer-window)
+                          (car margin) (cdr margin)))))
 
 (defun nano-dialog--make-header (buffer &rest args)
   "Build the header for BUFFER, applying ARGS style elements."
