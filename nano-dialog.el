@@ -269,7 +269,7 @@
                               (internal-border-width . ,border-width)
                               (visibility . nil)
                               (minibuffer . nil)))))
-    (set-face-background 'child-frame-border  border-color frame)
+    (set-face-background 'child-frame-border border-color frame)
     (set-face-background 'internal-border border-color frame)
 
     (when child-frame
@@ -399,7 +399,9 @@
          (face (or (plist-get args :face)
                    'nano-dialog-default-face))
          (labels (plist-get args :buttons))
-         (labels (mapconcat #'identity labels " ")))
+         ;; Label need an extra space to compensate for SVG tag padding
+         (labels (mapconcat (lambda (label) (concat label " "))
+                            labels " ")))
 
     (if (> (length labels) 0)
         (setq-local mode-line-format
@@ -410,7 +412,7 @@
                (propertize " " 'display '(raise ,(+ (car footer-padding))))
                (propertize " " 'display '(raise ,(- (cdr footer-padding))))
                ;; Why the 2 is necessary here is not clear
-               (propertize " " 'display '(space :align-to (- right ,(length labels) 2)))
+               (propertize " " 'display '(space :align-to (- right ,(length labels))))
                (mapconcat #'nano-dialog--make-button buttons " ")))))
       (setq-local mode-line-format nil))
     
@@ -428,7 +430,7 @@
                            :height ,(face-attribute face :height t 'default)))))
 
 (defun nano-dialog-delete (&optional force)
-  "Delete the dialog frame if not focused"
+  "Delete the dialog frame if not focused or FORCE is t."
   
   ;; Focus change event are not really consistent and it may happen
   ;; that several events are sent one after the other. On OSX, it
@@ -444,8 +446,8 @@
         (setq frame _frame))
       (setq valid (or valid (frame-focus-state _frame))))
        
-   ;; If at least one frame has focus, we kill the nano-frame if it
-   ;; was focused.
+   ;; If at least one frame has focus, we kill the dialog if it was
+   ;; focused or if FORCE is t. 
     (when (or force
               (and valid
                (framep frame)
@@ -473,7 +475,6 @@
     (apply #'nano-dialog--make-frame buffer args)
     (apply #'nano-dialog--make-header buffer args)
     (apply #'nano-dialog--make-footer buffer args)
-
     (tooltip-mode t)
     (setq tooltip-delay 0)
     (advice-add 'tooltip-hide :before #'nano-dialog--reset-button-state)))
