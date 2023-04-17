@@ -144,7 +144,7 @@
        :background ,(nano-dialog-color 'amber 1)
        :inherit bold
        :box (:line-width 1
-             :color ,(nano-dialog-color 'amber 5))))
+             :color ,(face-foreground 'default))))
   "Dialog altert face.")
 
 (defface nano-dialog-success-face
