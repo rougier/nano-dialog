@@ -281,8 +281,6 @@
     (set-window-margins (get-buffer-window) (car margin) (cdr margin))
     (make-frame-visible frame)
     (set-window-dedicated-p (get-buffer-window) t)
-    (setq-local cursor-type nil)
-    (read-only-mode t)
     (add-function :after after-focus-change-function #'nano-dialog-delete)
     frame))
 
