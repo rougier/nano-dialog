@@ -1,10 +1,10 @@
-;;; mini-dialog.el --- Native diaglob popups -*- lexical-binding: t -*-
+;;; nano-dialog.el --- Native dialog popups -*- lexical-binding: t -*-
 
-;; Copyright (C) 2023  Nicolas P. Rougier
+;; Copyright (C) 2023 Nicolas P. Rougier
 
 ;; Maintainer: Nicolas P. Rougier <Nicolas.Rougier@inria.fr>
 ;; URL: https://github.com/rougier/nano-dialog
-;; Version: 0.1
+;; Version: 0.2
 ;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: convenience
 
@@ -36,13 +36,13 @@
 ;;
 ;; (nano-dialog "*nano-dialog*"
 ;;              :title "[I] NANO Dialog"
-;;              :buttons '("OK" "CANCEL")
-;;              :on-click #'click) 
+;;              :buttons '("OK" "CANCEL"))
 ;;
 ;; NEWS:
 ;;
 ;; Version 0.2
 ;; - Added button hook
+;; - Added delete hook
 ;;
 ;; Version 0.1
 ;; - First version
@@ -311,6 +311,7 @@
     (buffer &key
             (title          nil)
             (buttons        nil)
+            (name           nil)
             (face          'nano-dialog-default-face)
             (transient      nano-dialog-transient)
             (child-frame    nano-dialog-child-frame)
@@ -459,6 +460,7 @@ other button states."
     (buffer &key
             (title          nil)
             (buttons        nil)
+            (name           nil)
             (face          'nano-dialog-default-face)
             (transient      nano-dialog-transient)
             (child-frame    nano-dialog-child-frame)
