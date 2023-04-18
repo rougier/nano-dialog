@@ -97,7 +97,10 @@
   (nth level (alist-get hue nano-dialog--colors)))
 
 (defvar nano-dialog-button-hook nil
-  "Normal hook ran when a button is pressed")
+  "Normal hook ran after a button has been pressed")
+
+(defvar nano-dialog-delete-hook nil
+  "Normal hook ran just before deleting a dialog")
 
 (defcustom nano-dialog-child-frame t
   "If t, dialog will be a child frame of the current selected frame.")
@@ -207,12 +210,9 @@
   "Inactive button face")
 
 (defface nano-dialog-button-highlight-face
-  `((t :foreground ,(face-foreground 'default)
-       :background ,(face-background 'highlight nil t)
-       :weight semibold
-       :box (:line-width 2
-             :color ,(face-foreground 'default)
-             :style none)))
+  `((t :foreground ,(face-background 'default)
+       :background ,(face-foreground 'default)
+       :weight semibold))
   "Highlight button face")
 
 (defface nano-dialog-button-pressed-face
@@ -241,6 +241,7 @@
     (buffer &key
             (title          nil)
             (buttons        nil)
+            (name           nil)
             (face          'nano-dialog-default-face)
             (transient      nano-dialog-transient)
             (child-frame    nano-dialog-child-frame)
@@ -270,7 +271,8 @@
                            (if buttons (car footer-padding) 0)
                            (if buttons (cdr footer-padding) 0))))
          (parent (selected-frame))
-         (frame (make-frame `((name . "nano-dialog")
+         (frame (make-frame `((name . ,name)
+                              (type . nano-dialog)
                               (parent-frame . ,(if child-frame parent nil))
                               (alpha . 100)
                               (margin . ,margin)
@@ -518,10 +520,10 @@ other button states."
   (let ((valid nil)
         (frame nil))
     (dolist (_frame (frame-list))
-      (when (string-equal (frame-parameter _frame 'name) "nano-dialog")
+      (when (eq (frame-parameter _frame 'type) 'nano-dialog)
         (setq frame _frame))
       (setq valid (or valid (frame-focus-state _frame))))
-       
+
    ;; If at least one frame has focus, we kill the dialog if it was
    ;; focused or if FORCE is t. 
     (when (or force
@@ -531,6 +533,8 @@ other button states."
                (frame-visible-p frame)
                (frame-parameter frame 'transient)
                (not (frame-focus-state frame))))
+      (dolist (hook nano-dialog-delete-hook)
+        (funcall hook frame))
       (delete-frame frame))))
 
 (defun nano-dialog (&optional buffer &rest args)
