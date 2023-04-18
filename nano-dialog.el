@@ -30,11 +30,19 @@
 ;;
 ;;; Usage:
 ;;
+;; (defun click (frame label)
+;;   (message "You have clicked on %s" label))
+;; (add-hook 'nano-dialog-button-hook #'click)
+;;
 ;; (nano-dialog "*nano-dialog*"
 ;;              :title "[I] NANO Dialog"
-;;              :buttons '("OK" "CANCEL"))
+;;              :buttons '("OK" "CANCEL")
+;;              :on-click #'click) 
 ;;
 ;; NEWS:
+;;
+;; Version 0.2
+;; - Added button hook
 ;;
 ;; Version 0.1
 ;; - First version
@@ -87,6 +95,9 @@
   "Get HUE color with given LEVEL"
   
   (nth level (alist-get hue nano-dialog--colors)))
+
+(defvar nano-dialog-button-hook nil
+  "Normal hook ran when a button is pressed")
 
 (defcustom nano-dialog-child-frame t
   "If t, dialog will be a child frame of the current selected frame.")
@@ -196,17 +207,17 @@
   "Inactive button face")
 
 (defface nano-dialog-button-highlight-face
-  `((t :foreground ,(face-background 'default)
-       :background ,(face-foreground 'default)
-       :weight semibold))
+  `((t :foreground ,(face-foreground 'default)
+       :background ,(face-background 'highlight nil t)
+       :weight semibold
+       :box (:line-width 2
+             :color ,(face-foreground 'default)
+             :style none)))
   "Highlight button face")
 
 (defface nano-dialog-button-pressed-face
   `((t :foreground ,(face-background 'default nil t)
-       :background ,(face-foreground 'default nil t)
-       :box (:line-width 2
-             :color ,(face-foreground 'default)
-             :style none)))
+       :background ,(face-foreground 'default nil t)))
   "Pressed button face")
 
 (defun nano-dialog--stroke-width (face)
@@ -356,38 +367,72 @@
                                         :stroke stroke
                                         :padding 1 :margin 0)))
     (face-background 'nano-dialog-button-highlight-face)
+
     (propertize (concat label " ")
                 'display button
                 'pointer 'hand
+                'label label
                 'keymap (let ((map (make-sparse-keymap)))
                           (define-key map [mode-line mouse-1]
                             `(lambda ()
                                (interactive)
                                (nano-dialog--button-pressed ,label)))
+;;                          (define-key map [mode-line down-mouse-1]
+;;                            `(lambda ()
+;;                               (interactive)
+;;                               (nano-dialog--button-pressed ,label)))
+;;                          (define-key map [mode-line mouse-1]
+;;                            `(lambda ()
+;;                               (interactive)
+;;                               (nano-dialog--button-released ,label)))
                           map)
                 'help-echo `(lambda (window object pos)
                               (nano-dialog--update-button-state ,label 'highlight)))))
 
 (defun nano-dialog--button-pressed (label)
-  "Close the frame"
+  "Handle pressed button event"
 
-  ;; This function can be advised to do something useful with the
-  ;; answer.
+  (nano-dialog--update-button-state label 'active)
+  (dolist (hook nano-dialog-button-hook)
+    (funcall hook (selected-frame) label))
   (nano-dialog-delete t))
-  
+
+(defun nano-dialog--button-released (label)
+  "Handle released button event"
+
+  ;; NOT USED: Problem is that due to tooltip hack, the update
+  ;; function is called just before the release button event which
+  ;; result in the button not being updated properly. We thus need to
+  ;; check if the cursor is on top of a button.
+  (let ((buttons (frame-parameter nil 'buttons))
+        (state))
+    (dolist (button buttons)
+      (let ((button-label (car button))
+            (button-state (cdr button)))
+        (when (string-equal button-label label)
+          (setq state button-state))
+        (unless (eq button-state 'inactive)
+          (setcdr button 'active))))
+    (modify-frame-parameters nil `((buttons . ,buttons)))))
+
 (defun nano-dialog--reset-button-state (&rest args)
   "Reset the state of the buttons."
-  
+
   (let ((buttons (frame-parameter nil 'buttons)))
     (dolist (button buttons)
       (let ((button-state (cdr button)))
-        (unless (eq button-state 'inactive)
-          (setcdr button 'active))))
+        (unless (or (eq button-state 'inactive)
+                    (eq button-state 'pressed)
+                    (eq button-state 'pressed-outside))
+          (setcdr button 'active))
+        (when (eq button-state 'pressed)
+          (setcdr button 'pressed-outside))))
       (modify-frame-parameters nil `((buttons . ,buttons))))
   (force-mode-line-update))
 
 (defun nano-dialog--update-button-state (label state)
-  "Update the state of the button LABEL with new STATE."
+  "Update the state of the button LABEL with new STATE and update
+other button states."
 
   (let ((buttons (frame-parameter nil 'buttons)))
     (dolist (button buttons)
@@ -395,12 +440,17 @@
             (button-state (cdr button)))
         (unless (eq button-state 'inactive)
           (if (string-equal button-label label)
-                (setcdr button state)
-            (setcdr button 'active)))))
+              (if (or (eq button-state 'pressed-outside)
+                      (eq button-state 'pressed))
+                  (setcdr button 'pressed)
+                (setcdr button state))
+            (if (or (eq button-state 'pressed-outside)
+                    (eq button-state 'pressed))
+                (setcdr button 'pressed-outside)
+              (setcdr button 'active))))))
+    
       (modify-frame-parameters nil `((buttons . ,buttons))))
   (force-mode-line-update))
-
-
 
 ;; (defun nano-dialog--make-footer (buffer &rest args)
 (cl-defun nano-dialog--make-footer
@@ -524,35 +574,35 @@
   (apply #'nano-dialog buffer
          :face 'nano-dialog-alert-face args))
 
-(defun nano-dialog-question (&optional buffer  &rest args)
+(defun nano-dialog-question (&optional buffer &rest args)
   "Build and show a new question dialog showing BUFFER.
  See nano-dialog for options"
 
   (apply #'nano-dialog buffer
          :face 'nano-dialog-question-face args))
 
-(defun nano-dialog-warning (&optional buffer  &rest args)
+(defun nano-dialog-warning (&optional buffer &rest args)
   "Build and show a new warning dialog showing BUFFER.
  See nano-dialog for options"
 
   (apply #'nano-dialog buffer
          :face 'nano-dialog-warning-face args))
 
-(defun nano-dialog-error (&optional buffer  &rest args)
+(defun nano-dialog-error (&optional buffer &rest args)
   "Build and show a new error dialog showing BUFFER.
  See nano-dialog for options"
 
   (apply #'nano-dialog buffer
          :face 'nano-dialog-error-face args))
 
-(defun nano-dialog-success (&optional buffer  &rest args)
+(defun nano-dialog-success (&optional buffer &rest args)
   "Build and show a new success dialog showing BUFFER.
  See nano-dialog for options"
 
   (apply #'nano-dialog buffer
          :face 'nano-dialog-success-face args))
  
-(defun nano-dialog-failure (&optional buffer  &rest args)
+(defun nano-dialog-failure (&optional buffer &rest args)
   "Build and show a new failure dialog showing BUFFER.
  See nano-dialog for options"
 
