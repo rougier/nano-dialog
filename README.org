@@ -1,4 +1,26 @@
 
 * Emacs native dialog box
 
+This library allows to have popup dialog boxes that are actually child
+frames where:
+- header line is used to show the (optional) header
+- mode line is used to show (optional) buttons
+- buttons can be highlighted with cursor (tooltip hack)
+- dialog content is a regulat buffer
+
+** Usage example
+
+#+begin_src emacs-lisp
+(defun click (frame label)
+  (message "You have clicked on %s" label))
+(add-hook 'nano-dialog-button-hook #'click)
+
+(nano-dialog "*nano-dialog*"
+             :title "[I] NANO Dialog"
+             :buttons '("OK" "CANCEL"))
+#+end_src
+
+** Screenshots
+
 [[./nano-dialog.png]]
+
