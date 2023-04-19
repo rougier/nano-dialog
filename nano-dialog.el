@@ -5,7 +5,7 @@
 ;; Maintainer: Nicolas P. Rougier <Nicolas.Rougier@inria.fr>
 ;; URL: https://github.com/rougier/nano-dialog
 ;; Version: 0.2
-;; Package-Requires: ((emacs "27.1"))
+;; Package-Requires: ((emacs "27.1") (svg-lib "0.2.5"))
 ;; Keywords: convenience
 
 ;; This file is not part of GNU Emacs.
@@ -484,7 +484,6 @@ other button states."
       (modify-frame-parameters nil `((buttons . ,buttons))))
   (force-mode-line-update))
 
-;; (defun nano-dialog--make-footer (buffer &rest args)
 (cl-defun nano-dialog--make-footer
     (buffer &key
             (title          nil)
