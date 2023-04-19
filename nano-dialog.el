@@ -5,7 +5,7 @@
 ;; Maintainer: Nicolas P. Rougier <Nicolas.Rougier@inria.fr>
 ;; URL: https://github.com/rougier/nano-dialog
 ;; Version: 0.2
-;; Package-Requires: ((emacs "27.1") (svg-lib "0.2.5"))
+;; Package-Requires: ((emacs "27.1"))
 ;; Keywords: convenience
 
 ;; This file is not part of GNU Emacs.
@@ -49,7 +49,6 @@
 ;; - First version
 
 ;;; Code
-(require 'svg-lib)
 (require 'tooltip)
 
 ;; See https://material.io/design/color/the-color-system.html
@@ -108,7 +107,8 @@
   "If t, dialog will be a child frame of the current selected frame.")
 
 (defcustom nano-dialog-svg-button t
-  "If t, dialog will use SVG buttons instead of text buttons.")
+  "If t, dialog will use SVG buttons if svg-lib is installed.
+ Else it fall back to text buttons.")
 
 (defcustom nano-dialog-transient t
   "If t, dialog will be deleted as soon as it losts focus.")
@@ -383,6 +383,7 @@ color."
   "Make a svg button from LABEL, FOREGROUND color, BACKGROUND color
 and STROKE width."
 
+  (require 'svg-lib)
   (propertize (concat label " ")
               'display (svg-lib-tag label nil :foreground foreground
                                               :background background
@@ -392,7 +393,8 @@ and STROKE width."
 
 (defun nano-dialog--make-button (button &optional use-svg)
   "Make a button from BUTTON that is a cons (label . state). When
-USE-SVG is t, result is a SVG button else, it is a text button."
+USE-SVG is t and svg-lib is installed, result is a SVG button
+else, it is a text button."
 
   (let* ((label (car button))
          (state (cdr button))
@@ -403,7 +405,7 @@ USE-SVG is t, result is a SVG button else, it is a text button."
          (foreground (face-foreground face nil 'default))
          (background (face-background face nil 'default))
          (stroke (nano-dialog--stroke-width face))
-         (button (if use-svg
+         (button (if (and use-svg (package-installed-p 'svg-lib))
                      (nano-dialog--make-svg-button label foreground background stroke)
                    (nano-dialog--make-text-button label foreground background))))
     (propertize button
