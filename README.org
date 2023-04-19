@@ -5,8 +5,8 @@ This library allows to have popup dialog boxes that are actually child
 frames where:
 - header line is used to show the (optional) header
 - mode line is used to show (optional) buttons
-- buttons can be highlighted with cursor (tooltip hack)
-- dialog content is a regulat buffer
+- buttons can be highlighted with cursor (tooltips hack)
+- dialog content is a regular buffer
 
 ** Usage example
 
