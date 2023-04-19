@@ -1,4 +1,4 @@
-;;; nano-dialog.el --- Native dialog popups -*- lexical-binding: t -*-
+;;; nano-dialog.el --- Native dialog frames -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2023 Nicolas P. Rougier
 
@@ -43,7 +43,7 @@
 ;; Version 0.2
 ;; - Added button hook
 ;; - Added delete hook
-;; - Added text button text option
+;; - Added text button option
 ;;
 ;; Version 0.1
 ;; - First version
@@ -94,7 +94,7 @@
                     "#607D8B" "#546E7A" "#455A64" "#37474F" "#263238"))))
 
 (defun nano-dialog-color (hue level)
-  "Get HUE color with given LEVEL"
+  "Get HUE color with given LEVEL (between 0 and 9)"
   
   (nth level (alist-get hue nano-dialog--colors)))
 
@@ -108,7 +108,7 @@
   "If t, dialog will be a child frame of the current selected frame.")
 
 (defcustom nano-dialog-svg-button t
-  "If t, dialog will use SVG buttons instead of text button.")
+  "If t, dialog will use SVG buttons instead of text buttons.")
 
 (defcustom nano-dialog-transient t
   "If t, dialog will be deleted as soon as it losts focus.")
@@ -120,10 +120,10 @@
   "Dialog frame height (characters)")
 
 (defcustom nano-dialog-x-position 0.5
-  "Dialog frame position (relative)")
+  "Dialog frame position (relative to parent frame)")
 
 (defcustom nano-dialog-y-position 0.5
-  "Dialog position (relative)")
+  "Dialog position (relative to parent frame)")
 
 (defcustom nano-dialog-margin '(2 . 2)
   "Dialog window margin (left & right, characters)")
@@ -212,18 +212,18 @@
        :box (:line-width 2
              :color ,(face-foreground 'default)
              :style none))
-  "Inactive button face")
+  "Inactive button face.")
 
 (defface nano-dialog-button-highlight-face
   `((t :foreground ,(face-background 'default)
        :background ,(face-foreground 'default)
        :weight semibold))
-  "Highlight button face")
+  "Highlight button face.")
 
 (defface nano-dialog-button-pressed-face
   `((t :foreground ,(face-background 'default nil t)
        :background ,(face-foreground 'default nil t)))
-  "Pressed button face")
+  "Pressed button face.")
 
 (defun nano-dialog--stroke-width (face)
   "Extract the line width of the box for the given FACE."
@@ -292,12 +292,18 @@
       (set-face-background 'internal-border border-color frame))
     (select-frame-set-input-focus frame)
     (switch-to-buffer buffer)
+
+    ;; This will enforce margin for the frame window
     (add-to-list 'window-buffer-change-functions
                  #'nano-dialog--apply-margin)
+
     (set-window-margins (get-buffer-window) (car margin) (cdr margin))
     (make-frame-visible frame)
     (set-window-dedicated-p (get-buffer-window) t)
+
+    ;; This enforce the transient property
     (add-function :after after-focus-change-function #'nano-dialog-delete)
+    
     frame))
 
 (defun nano-dialog--apply-margin (&rest args)
@@ -355,7 +361,8 @@
                                :background ,(face-background 'default))))))
 
 (defun nano-dialog--make-text-button (label foreground background)
-  "Make a text button from LABEL, FOREROUND color and BACKGROUND color"
+  "Make a text button from LABEL, FOREGROUND color and BACKGROUND
+color."
 
   (let* ((label (concat " " label " "))
          ;; We compensate the footer padding with an irregular outer
@@ -372,7 +379,8 @@
                                           :color ,(face-background 'default))))))
 
 (defun nano-dialog--make-svg-button (label foreground background stroke)
-  "Make a svg button from LABEL, FOREROUND color and BACKGROUND color"
+  "Make a svg button from LABEL, FOREGROUND color, BACKGROUND color
+and STROKE width."
 
   (propertize (concat label " ")
               'display (svg-lib-tag label nil :foreground foreground
@@ -382,7 +390,9 @@
                                               :margin 0)))
 
 (defun nano-dialog--make-button (button &optional use-svg)
-  "Make a svg button from BUTTON that is a cons (label . state)."
+  "Make a button from BUTTON that is a cons (label . state). When
+USE-SVG is t, button will be a SVG tag else, it is a text
+button."
 
   (let* ((label (car button))
          (state (cdr button))
@@ -546,7 +556,7 @@ other button states."
       (setq valid (or valid (frame-focus-state _frame))))
 
    ;; If at least one frame has focus, we kill the dialog if it was
-   ;; focused or if FORCE is t. 
+   ;; focused and transient or if FORCE is t. 
     (when (or force
               (and valid
                (framep frame)
@@ -564,7 +574,7 @@ other button states."
   Args can be:
 
   :title          ;; Dialog title (string)
-  :buttons        ;; Labels for dialog SVG buttons (list of string)
+  :buttons        ;; Labels for dialog buttons (list of string)
   :face           ;; Dialog face (face)
   :transient      ;; Dialog transient property (bool)
   :child-frame    ;; Whether dialog is a child frame (bool)
@@ -578,9 +588,11 @@ other button states."
          (frame (apply #'nano-dialog--make-frame buffer args)))
     (apply #'nano-dialog--make-header buffer args)
     (apply #'nano-dialog--make-footer buffer args)
-    (tooltip-mode t)
-    (setq tooltip-delay 0)
+
+    (setq-local tooltip-mode t)
+    (setq-local tooltip-delay 0)
     (advice-add 'tooltip-hide :before #'nano-dialog--reset-button-state)
+    
     frame))
 
 (defun nano-dialog-info (&optional buffer &rest args)
@@ -634,13 +646,3 @@ other button states."
 
 (provide 'nano-dialog)
 ;;; nano-dialog.el ends here
-
-;; (nano-dialog-info     "*nano-dialog*" :title "􁌴 Info")
-;; (nano-dialog-question "*nano-dialog*" :title "􁌶 Question")
-;; (nano-dialog-success  "*nano-dialog*" :title "􀿋 Success")
-;; (nano-dialog-warning  "*nano-dialog*" :title "􀌬 Warning")
-;; (nano-dialog-failure  "*nano-dialog*" :title "􀌬 Failure")
-;; (nano-dialog-error    "*nano-dialog*" :title "􀌬 Error")
-
-
-
