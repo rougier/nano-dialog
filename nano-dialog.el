@@ -589,8 +589,9 @@ other button states."
     (apply #'nano-dialog--make-header buffer args)
     (apply #'nano-dialog--make-footer buffer args)
 
-    (setq-local tooltip-mode t)
-    (setq-local tooltip-delay 0)
+    ;; This should be local to the frame but not sure how to do it
+    (tooltip-mode t)
+    (setq tooltip-delay 0)
     (advice-add 'tooltip-hide :before #'nano-dialog--reset-button-state)
     
     frame))
