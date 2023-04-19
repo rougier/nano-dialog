@@ -414,7 +414,7 @@
   (nano-dialog--update-button-state label 'active)
   (dolist (hook nano-dialog-button-hook)
     (funcall hook (selected-frame) label))
-  (nano-dialog-delete t))
+  (delete-frame))
 
 (defun nano-dialog--button-released (label)
   "Handle released button event"
