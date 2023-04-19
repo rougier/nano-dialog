@@ -392,8 +392,7 @@ and STROKE width."
 
 (defun nano-dialog--make-button (button &optional use-svg)
   "Make a button from BUTTON that is a cons (label . state). When
-USE-SVG is t, button will be a SVG tag else, it is a text
-button."
+USE-SVG is t, result is a SVG button else, it is a text button."
 
   (let* ((label (car button))
          (state (cdr button))
@@ -420,15 +419,18 @@ button."
                               (nano-dialog--update-button-state ,label 'highlight)))))
 
 (defun nano-dialog--button-pressed (label)
-  "Handle pressed button event"
+  "Handle pressed button and run hooks."
 
   (nano-dialog--update-button-state label 'active)
-  (dolist (hook nano-dialog-button-hook)
-    (funcall hook (selected-frame) label))
-  (delete-frame))
+  (let ((frame (selected-frame)))
+    (dolist (hook nano-dialog-button-hook)
+      (funcall hook frame label))
+    (dolist (hook nano-dialog-delete-hook)
+      (funcall hook frame))
+  (delete-frame frame)))
 
 (defun nano-dialog--button-released (label)
-  "Handle released button event"
+  "Handle released button event (NOT USED)."
 
   ;; NOT USED: Problem is that due to tooltip hack, the update
   ;; function is called just before the release button event which
@@ -446,7 +448,7 @@ button."
     (modify-frame-parameters nil `((buttons . ,buttons)))))
 
 (defun nano-dialog--reset-button-state (&rest args)
-  "Reset the state of the buttons."
+  "Reset the state of all the buttons."
 
   (let ((buttons (frame-parameter nil 'buttons)))
     (dolist (button buttons)
