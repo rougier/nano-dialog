@@ -43,12 +43,14 @@
 ;; Version 0.2
 ;; - Added button hook
 ;; - Added delete hook
+;; - Added text button text option
 ;;
 ;; Version 0.1
 ;; - First version
 
 ;;; Code
 (require 'svg-lib)
+(require 'tooltip)
 
 ;; See https://material.io/design/color/the-color-system.html
 (defconst nano-dialog--colors
@@ -104,6 +106,9 @@
 
 (defcustom nano-dialog-child-frame t
   "If t, dialog will be a child frame of the current selected frame.")
+
+(defcustom nano-dialog-svg-button t
+  "If t, dialog will use SVG buttons instead of text button.")
 
 (defcustom nano-dialog-transient t
   "If t, dialog will be deleted as soon as it losts focus.")
@@ -249,9 +254,7 @@
             (y              nano-dialog-y-position)
             (width          nano-dialog-width)
             (height         nano-dialog-height)
-            (margin         nano-dialog-margin)
-            (footer-padding nano-dialog-footer-padding)
-            (header-padding nano-dialog-header-padding))
+            (margin         nano-dialog-margin))
     "Build the frame for BUFFER, applying style elements."
   
   (let* ((border-color (nano-dialog--stroke-color face))
@@ -265,11 +268,11 @@
          ;; When no buttons, footer is an empty line without padding
          (height (floor (+ height 1
                            1
-                           (if title (car header-padding) 0)
-                           (if title (cdr header-padding) 0)
+                           (if title (car nano-dialog-header-padding) 0)
+                           (if title (cdr nano-dialog-header-padding) 0)
                            1
-                           (if buttons (car footer-padding) 0)
-                           (if buttons (cdr footer-padding) 0))))
+                           (if buttons (car nano-dialog-footer-padding) 0)
+                           (if buttons (cdr nano-dialog-footer-padding) 0))))
          (parent (selected-frame))
          (frame (make-frame `((name . ,name)
                               (type . nano-dialog)
@@ -282,11 +285,11 @@
                               (internal-border-width . ,border-width)
                               (visibility . nil)
                               (minibuffer . nil)))))
-    (set-face-background 'child-frame-border border-color frame)
-    (set-face-background 'internal-border border-color frame)
-    (when child-frame
-      (modify-frame-parameters frame `((top . ,y) (left . ,x))))
-
+    (if child-frame
+        (progn
+          (set-face-background 'child-frame-border border-color frame)
+          (modify-frame-parameters frame `((top . ,y) (left . ,x))))
+      (set-face-background 'internal-border border-color frame))
     (select-frame-set-input-focus frame)
     (switch-to-buffer buffer)
     (add-to-list 'window-buffer-change-functions
@@ -301,9 +304,9 @@
   "Apply margin to the dialog window"
   
   (when-let* ((frame (selected-frame))
-              (name (frame-parameter frame 'name))
+              (type (frame-parameter frame 'type))
               (margin (frame-parameter frame 'margin)))
-    (when (string-equal name "nano-dialog")
+    (when (eq type 'nano-dialog)
       (set-window-margins (get-buffer-window)
                           (car margin) (cdr margin)))))
 
@@ -319,10 +322,8 @@
             (y              nano-dialog-y-position)
             (width          nano-dialog-width)
             (height         nano-dialog-height)
-            (margin         nano-dialog-margin)
-            (footer-padding nano-dialog-footer-padding)
-            (header-padding nano-dialog-header-padding))
-  "Build the header for BUFFER, applying ARGS style elements."
+            (margin         nano-dialog-margin))
+  "Build the header for BUFFER, applying style elements."
   
   (with-current-buffer buffer
     (if (stringp title)
@@ -330,9 +331,9 @@
            `(:eval
              (concat
               (propertize (make-string ,(car margin) ? )
-                          'display '(raise ,(car header-padding)))
+                          'display '(raise ,(car nano-dialog-header-padding)))
               ,title
-              (propertize " " 'display '(raise ,(- (cdr header-padding))))
+              (propertize " " 'display '(raise ,(- (cdr nano-dialog-header-padding))))
               (propertize " " 'display `(space :align-to (- right 1)))
               (propertize "✕"
                           'pointer 'hand
@@ -353,8 +354,35 @@
                                :foreground ,(face-foreground face)
                                :background ,(face-background 'default))))))
 
-(defun nano-dialog--make-button (button)
-  "Make a svg button from button that is a cons (label . state)."
+(defun nano-dialog--make-text-button (label foreground background)
+  "Make a text button from LABEL, FOREROUND color and BACKGROUND color"
+
+  (let* ((label (concat " " label " "))
+         ;; We compensate the footer padding with an irregular outer
+         ;; box around label (vertical border with a default
+         ;; background color). If this is not made the background color
+         ;; is the height of the modeline which is not very aesthetic.
+         (padding (floor (/ (* (frame-char-height)
+                               (+ (car nano-dialog-footer-padding)
+                                  (cdr nano-dialog-footer-padding))) 2))))
+    (propertize label
+                'face `(:foreground ,foreground
+                        :background ,background
+                        :box (:line-width (0 . ,padding)
+                                          :color ,(face-background 'default))))))
+
+(defun nano-dialog--make-svg-button (label foreground background stroke)
+  "Make a svg button from LABEL, FOREROUND color and BACKGROUND color"
+
+  (propertize (concat label " ")
+              'display (svg-lib-tag label nil :foreground foreground
+                                              :background background
+                                              :stroke stroke
+                                              :padding 1
+                                              :margin 0)))
+
+(defun nano-dialog--make-button (button &optional use-svg)
+  "Make a svg button from BUTTON that is a cons (label . state)."
 
   (let* ((label (car button))
          (state (cdr button))
@@ -365,14 +393,10 @@
          (foreground (face-foreground face nil 'default))
          (background (face-background face nil 'default))
          (stroke (nano-dialog--stroke-width face))
-         (button (svg-lib-tag label nil :foreground foreground
-                                        :background background
-                                        :stroke stroke
-                                        :padding 1 :margin 0)))
-    (face-background 'nano-dialog-button-highlight-face)
-
-    (propertize (concat label " ")
-                'display button
+         (button (if use-svg
+                     (nano-dialog--make-svg-button label foreground background stroke)
+                   (nano-dialog--make-text-button label foreground background))))
+    (propertize button
                 'pointer 'hand
                 'label label
                 'keymap (let ((map (make-sparse-keymap)))
@@ -380,14 +404,6 @@
                             `(lambda ()
                                (interactive)
                                (nano-dialog--button-pressed ,label)))
-;;                          (define-key map [mode-line down-mouse-1]
-;;                            `(lambda ()
-;;                               (interactive)
-;;                               (nano-dialog--button-pressed ,label)))
-;;                          (define-key map [mode-line mouse-1]
-;;                            `(lambda ()
-;;                               (interactive)
-;;                               (nano-dialog--button-released ,label)))
                           map)
                 'help-echo `(lambda (window object pos)
                               (nano-dialog--update-button-state ,label 'highlight)))))
@@ -468,30 +484,33 @@ other button states."
             (y              nano-dialog-y-position)
             (width          nano-dialog-width)
             (height         nano-dialog-height)
-            (margin         nano-dialog-margin)
-            (footer-padding nano-dialog-footer-padding)
-            (header-padding nano-dialog-header-padding))
+            (margin         nano-dialog-margin))
   "Build the footer for BUFFER, applying style elements."
 
   ;; We store the buttons state inside the frame such as to be able
   ;; to update their state later
   (if buttons
       (progn
-        (modify-frame-parameters (selected-frame)
-                                 `((buttons . ,(mapcar (lambda (label)
-                                                         (cons label 'active))
-                                                       buttons))))
-        (let ((buttons-size (length (mapconcat (lambda (label)
-                                         (concat label " "))
-                                               buttons " "))))
+        (let ((buttons (mapcar (lambda (label)
+                                 (cons label 'active))
+                               buttons)))
+          (modify-frame-parameters (selected-frame)
+                                   `((buttons . ,buttons)))
           (setq-local mode-line-format
-             `(:eval
-               (let ((buttons (frame-parameter nil 'buttons)))
-                 (concat
-                  (propertize " " 'display '(raise ,(+ (car footer-padding))))
-                  (propertize " " 'display '(raise ,(- (cdr footer-padding))))
-                  (propertize " " 'display '(space :align-to (- right ,buttons-size)))
-                  (mapconcat #'nano-dialog--make-button buttons " ")))))))
+              `(:eval
+                 (let* ((buttons (frame-parameter nil 'buttons))
+                        (buttons (if nano-dialog-svg-button
+                                     (mapconcat (lambda (button)
+                                                  (nano-dialog--make-button button t))
+                                                buttons " ")
+                                   (mapconcat (lambda (button)
+                                                (nano-dialog--make-button button nil))
+                                              buttons " "))))
+                   (concat
+                    (propertize " " 'display '(raise ,(+ (car nano-dialog-footer-padding))))
+                    (propertize " " 'display '(raise ,(- (cdr nano-dialog-footer-padding))))
+                    (propertize " " 'display `(space :align-to (- right ,(length buttons))))
+                    buttons))))))
     (progn
       (modify-frame-parameters (selected-frame) '((buttons . nil)))
       (setq-local mode-line-format "")))
@@ -545,7 +564,7 @@ other button states."
   Args can be:
 
   :title          ;; Dialog title (string)
-  :buttons        ;; Labels for dialog buttons (list of string)
+  :buttons        ;; Labels for dialog SVG buttons (list of string)
   :face           ;; Dialog face (face)
   :transient      ;; Dialog transient property (bool)
   :child-frame    ;; Whether dialog is a child frame (bool)
@@ -553,9 +572,7 @@ other button states."
   :y              ;; Dialog y position (int or float)
   :width          ;; Dialog width (int)
   :height         ;; Dialog height (int)
-  :margin         ;; Dialog window margin (cons int int)
-  :footer-padding ;; Footer top/bottom padding (cons float float)
-  :header-padding ;; Header top/bottom padding (cons float float)"
+  :margin         ;; Dialog window margin (cons int int)"
   
   (let* ((buffer (or buffer "*nano-dialog*"))
          (frame (apply #'nano-dialog--make-frame buffer args)))
