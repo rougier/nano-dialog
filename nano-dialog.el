@@ -293,7 +293,7 @@
     (select-frame-set-input-focus frame)
     (switch-to-buffer buffer)
 
-    ;; This will enforce margin for the frame window
+    ;; This enforces margin for the frame window
     (add-to-list 'window-buffer-change-functions
                  #'nano-dialog--apply-margin)
 
@@ -301,7 +301,7 @@
     (make-frame-visible frame)
     (set-window-dedicated-p (get-buffer-window) t)
 
-    ;; This enforce the transient property
+    ;; This enforces the transient property
     (add-function :after after-focus-change-function #'nano-dialog-delete)
     
     frame))
@@ -332,29 +332,30 @@
   "Build the header for BUFFER, applying style elements."
   
   (with-current-buffer buffer
-    (if (stringp title)
-        (setq-local header-line-format
-           `(:eval
-             (concat
-              (propertize (make-string ,(car margin) ? )
-                          'display '(raise ,(car nano-dialog-header-padding)))
-              ,title
-              (propertize " " 'display '(raise ,(- (cdr nano-dialog-header-padding))))
-              (propertize " " 'display `(space :align-to (- right 1)))
-              (propertize "✕"
-                          'pointer 'hand
-                          'keymap (let ((map (make-sparse-keymap)))
-                                    (define-key map [header-line mouse-1]
-                                      (lambda ()
-                                        (interactive)
-                                        (nano-dialog-delete t)))
-                                    map)))))
-        (setq-local header-line-format ""))
-      (if title
+    (if (and (stringp title) (> (length title) 0))
+        (progn
+          (setq-local header-line-format
+             `(:eval
+               (concat
+                (propertize (make-string ,(car margin) ? )
+                            'display '(raise ,(car nano-dialog-header-padding)))
+                ,title
+                (propertize " " 'display '(raise ,(- (cdr nano-dialog-header-padding))))
+                (propertize " " 'display `(space :align-to (- right 1)))
+                (propertize "✕"
+                            'pointer 'hand
+                            'keymap (let ((map (make-sparse-keymap)))
+                                      (define-key map [header-line mouse-1]
+                                        (lambda ()
+                                          (interactive)
+                                          (nano-dialog-delete t)))
+                                      map)))))
           (face-remap-set-base 'header-line
                                `(:inherit ,(face-attribute face ':inherit)
                                  :foreground ,(face-foreground face)
-                                 :background ,(face-background face)))
+                                 :background ,(face-background face))))
+      (progn
+        (setq-local header-line-format ""))
         (face-remap-set-base 'header-line
                              `(:inherit ,(face-attribute face ':inherit)
                                :foreground ,(face-foreground face)
