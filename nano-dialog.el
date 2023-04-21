@@ -277,7 +277,7 @@
          (frame (make-frame `((name . ,name)
                               (type . nano-dialog)
                               (parent-frame . ,(if child-frame parent nil))
-                              (alpha . 100)
+                              (alpha . 0)
                               (margin . ,margin)
                               (transient . ,transient)
                               (width . ,width)
@@ -285,25 +285,28 @@
                               (internal-border-width . ,border-width)
                               (visibility . nil)
                               (minibuffer . nil)))))
+
     (if child-frame
         (progn
           (set-face-background 'child-frame-border border-color frame)
           (modify-frame-parameters frame `((top . ,y) (left . ,x))))
       (set-face-background 'internal-border border-color frame))
-    (select-frame-set-input-focus frame)
     (switch-to-buffer buffer)
-
     ;; This enforces margin for the frame window
     (add-to-list 'window-buffer-change-functions
                  #'nano-dialog--apply-margin)
 
     (set-window-margins (get-buffer-window) (car margin) (cdr margin))
-    (make-frame-visible frame)
     (set-window-dedicated-p (get-buffer-window) t)
 
     ;; This enforces the transient property
     (add-function :after after-focus-change-function #'nano-dialog-delete)
-    
+    (select-frame-set-input-focus frame)
+
+    ;; This avoid flickers
+    (modify-frame-parameters frame `((alpha . 100)))
+    (make-frame-visible frame)
+
     frame))
 
 (defun nano-dialog--apply-margin (&rest args)
