@@ -41,9 +41,9 @@
 ;; NEWS:
 ;;
 ;; Version 0.2
-;; - Added button hook
-;; - Added delete hook
+;; - Added button hook & delete hook
 ;; - Added text button option
+;; - Remove hard dependency on svg-lib (dynamic test)
 ;;
 ;; Version 0.1
 ;; - First version
@@ -513,7 +513,7 @@ other button states."
           (setq-local mode-line-format
               `(:eval
                  (let* ((buttons (frame-parameter nil 'buttons))
-                        (buttons (if nano-dialog-svg-button
+                        (buttons (if (and nano-dialog-svg-button (package-installed-p 'svg-lib))
                                      (mapconcat (lambda (button)
                                                   (nano-dialog--make-button button t))
                                                 buttons " ")
